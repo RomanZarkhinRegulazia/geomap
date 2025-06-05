@@ -20,11 +20,11 @@
 <body>
 <div id="map"></div>
 
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const width = 960;
-const height = 600;
 const colors = {
   low: '#e0e0e0',
   offshore: 'yellow',
@@ -96,53 +96,47 @@ function getClassification(name) {
 function getFlagEmoji(cc) {
   if (!cc) return '';
   return cc
+    .toUpperCase()
     .split('')
     .map(c => String.fromCodePoint(127397 + c.charCodeAt(0)))
     .join('');
 }
-const projection = d3.geoMercator()
-  .scale(150)
-  .translate([width / 2, height / 1.5]);
-const path = d3.geoPath().projection(projection);
-const svg = d3.select('#map').append('svg')
-  .attr('width', width)
-  .attr('height', height);
-const tooltip = d3.select('body').append('div')
-  .attr('class', 'tooltip')
-  .style('opacity', 0);
+
+const map = L.map('map').setView([20, 0], 2);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
 Promise.all([
-  d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'),
+  d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json'),
   d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/country-iso-3.json')
 ]).then(([world, iso]) => {
   const countries = topojson.feature(world, world.objects.countries).features;
-  const isoMap = iso; // maps numeric id to {name, iso_a2}
-  svg.selectAll('path')
-    .data(countries)
-    .enter().append('path')
-    .attr('d', path)
-    .attr('fill', d => {
-      const info = isoMap[d.id];
-      const name = info ? info.name : d.properties.name;
+  const isoMap = iso;
+  L.geoJSON(countries, {
+    style: feat => {
+      const info = isoMap[feat.id];
+      const name = info ? info.name : feat.properties.name;
       const {cls} = getClassification(name);
-      return colors[cls] || colors.low;
-    })
-    .attr('stroke', '#999')
-    .on('mouseover', function(event, d) {
-      const info = isoMap[d.id];
-      const name = info ? info.name : d.properties.name;
-      const cc = info ? info.iso_a2 : d.properties.iso_a2;
+      return {
+        color: '#999',
+        weight: 1,
+        fillOpacity: 0.8,
+        fillColor: colors[cls] || colors.low
+      };
+    },
+    onEachFeature: (feat, layer) => {
+      const info = isoMap[feat.id];
+      const name = info ? info.name : feat.properties.name;
+      const cc = info ? info.iso_a2 : feat.properties.iso_a2;
       const {cls, reason} = getClassification(name);
-      tooltip.transition().duration(200).style('opacity', 0.9);
-      tooltip.html(
-        '<strong>' + name + '</strong> ' + getFlagEmoji(cc) + '<br/>' +
-        cls + '<br/>' + reason
-      )
-      .style('left', (event.pageX + 5) + 'px')
-      .style('top', (event.pageY - 28) + 'px');
-    })
-    .on('mouseout', function() {
-      tooltip.transition().duration(500).style('opacity', 0);
-    });
+      const flag = getFlagEmoji(cc);
+      layer.bindTooltip(
+        `<strong>${name}</strong> ${flag}<br/>${cls}<br/>${reason}`
+      );
+    }
+  }).addTo(map);
 });
 </script>
 </body>
