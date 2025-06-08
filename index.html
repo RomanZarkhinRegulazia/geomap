@@ -22,10 +22,10 @@
 <body>
 <div id="map"></div>
 <div id="tooltip" class="tooltip" style="display:none"></div>
-<script src="https://cdn.jsdelivr.net/npm/ol@latest/ol.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3"></script>
-<script>
+<script type="module">
+import 'https://cdn.jsdelivr.net/npm/ol@latest/ol.js';
 // Risk classifications
 const colors = {
   low: '#e0e0e0',
